@@ -5,9 +5,6 @@
 // @description  A browser script made to give enhancements on Miniblox
 // @author       7GrandDad
 // @match        https://miniblox.io/*
-// @match        https://miniblox.org/*
-// @match        https://miniblox.online/*
-// @match        https://bloxbattles.io/*
 // @icon         https://miniblox.io/favicon.png
 // @grant        GM_getValue
 // @grant        GM_setValue
