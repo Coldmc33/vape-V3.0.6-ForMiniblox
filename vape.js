@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Vape V4 v3.0.4
+// @name         Vape V4
 // @namespace    http://7granddadpgn.github.io
-// @version      3.0.4
+// @version      3.0.6
 // @description  A browser script made to give enhancements on Miniblox
 // @author       7GrandDad
 // @match        https://miniblox.io/*
@@ -9,7 +9,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
-// @require      https://codeberg.org/RealPacket/VapeForMiniblox/raw/tag/3.0.4/injection.js#sha256=d33761f19fcce2e06f0638023fc2ae868fe85f7a1281c8b50094882ff8d73204
+// @require      https://codeberg.org/RealPacket/VapeForMiniblox/raw/tag/3.0.6/injection.js#sha256=a50e0b233ad7b1a61f4cbbf352ac3ab07fd356e01fe8615c90755eb9ae51227e
 // @run-at       document-start
 // ==/UserScript==
 
@@ -64,7 +64,7 @@ let replacements = {};
 let dumpedVarNames = {};
 const storeName = "a" + crypto.randomUUID().replaceAll("-", "").substring(16);
 const vapeName = crypto.randomUUID().replaceAll("-", "").substring(16);
-const VERSION = "3.0.4";
+const VERSION = "3.0.6";
 
 // ANTICHEAT HOOK
 function replaceAndCopyFunction(oldFunc, newFunc) {
@@ -144,8 +144,8 @@ function modifyCode(text) {
 	'use strict';
 
 	// DUMPING
-	addDump('moveStrafeDump', 'strafe:this\.([a-zA-Z]*)');
-	addDump('moveForwardDump', 'forward:this\.([a-zA-Z]*)');
+	addDump('moveStrafeDump', 'this\\.([a-zA-Z]+)=\\([a-zA-Z]+\\.right');
+	addDump('moveForwardDump', 'this\\.([a-zA-Z]+)=\\([a-zA-Z]+\\.(up|down)');
 	addDump('keyPressedDump', 'function ([a-zA-Z]*)\\([a-zA-Z]*\\)\{return keyPressed\\([a-zA-Z]*\\)');
 	addDump('entitiesDump', 'this\.([a-zA-Z]*)\.values\\(\\)\\)[a-zA-Z]* instanceof EntityTNTPrimed');
 	addDump('isInvisibleDump', '[a-zA-Z]*\.([a-zA-Z]*)\\(\\)\\)&&\\([a-zA-Z]*=new ([a-zA-Z]*)\\(new');
@@ -356,7 +356,7 @@ function modifyCode(text) {
 	`);
 
 	// KEEPSPRINT
-	addModification('g>0&&(h.addVelocity(-Math.sin(this.yaw)*g*.5,.1,-Math.cos(this.yaw)*g*.5),this.motion.x*=.6,this.motion.z*=.6,this.setSprinting(!1)),', `
+	addModification('g>0&&(h.addVelocity(-Math.sin(this.yaw*Math.PI/180)*g*.5,.1,Math.cos(this.yaw*Math.PI/180)*g*.5),this.motion.x*=.6,this.motion.z*=.6)', `
 		if (g > 0) {
 h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 			if (this != player || !enabledModules["KeepSprint"]) {
@@ -378,7 +378,8 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 	// NOSLOWDOWN
 	addModification('updatePlayerMoveState(),this.isUsingItem()', 'updatePlayerMoveState(),(this.isUsingItem() && !enabledModules["NoSlowdown"])', true);
 	addModification('S&&!this.isUsingItem()', 'S&&!(this.isUsingItem() && !enabledModules["NoSlowdown"])', true);
-	addModification('0),this.sneak', ' && !enabledModules["NoSlowdown"]');
+	// TODO: fix this
+	// addModification('0),this.sneak', ' && !enabledModules["NoSlowdown"]');
 
 	// STEP
 	addModification('p.y=this.stepHeight;', 'p.y=(enabledModules["Step"]?Math.max(stepheight[1],this.stepHeight):this.stepHeight);', true);
@@ -688,6 +689,14 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 				}
 			})
 
+            function reloadTickLoop(value) {
+				if (game.tickLoop) {
+					MSPT = value;
+					clearInterval(game.tickLoop);
+					game.tickLoop = setInterval(() => game.fixedUpdate(), MSPT);
+				}
+			}
+
 			new Module("Sprint", function() {});
 			const velocity = new Module("Velocity", function() {});
 			velocityhori = velocity.addoption("Horizontal", Number, 0);
@@ -717,7 +726,7 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 					let ticks = 0;
 					tickLoop["AntiFall"] = function() {
         				const ray = rayTraceBlocks(player.getEyePos(), player.getEyePos().clone().setY(0), false, false, false, game.world);
-						if (player.fallDistance > 2.8 && !ray) {
+						if (!ray) {
 							player.motion.y = 0;
 						}
 					};
@@ -920,37 +929,34 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 			flyvalue = fly.addoption("Speed", Number, 2);
 			flyvert = fly.addoption("Vertical", Number, 0.7);
 
-			let jumpflyvalue, jumpflyvert, jumpFlyUpMotion, jumpFlyGlide;
-			// JumpFly
-			const jumpfly = new Module("JumpFly", function(callback) {
+			// InfiniteFly
+			let infiniteFlyVert;
+			const infiniteFly = new Module("InfiniteFly", function(callback) {
 				if (callback) {
 					let ticks = 0;
-					tickLoop["JumpFly"] = function() {
+					tickLoop["InfiniteFly"] = function() {
 						ticks++;
-						const dir = getMoveDirection(jumpflyvalue[1]);
+						const dir = getMoveDirection(0.2);
 						player.motion.x = dir.x;
 						player.motion.z = dir.z;
 						const goUp = keyPressedDump("space");
 						const goDown = keyPressedDump("shift");
 						if (goUp || goDown) {
-							player.motion.y = goUp ? jumpflyvert[1] : -jumpflyvert[1];
+							player.motion.y = goUp ? infiniteFlyVert[1] : -infiniteFlyVert[1];
 						} else {
-							player.motion.y = (ticks < 18 && ticks % 6 < 4 ? jumpFlyUpMotion[1] : jumpFlyGlide[1]);
+							player.motion.y = 0;
 						}
 					};
 				}
 				else {
-					delete tickLoop["JumpFly"];
+					delete tickLoop["InfiniteFly"];
 					if (player) {
 						player.motion.x = Math.max(Math.min(player.motion.x, 0.3), -0.3);
 						player.motion.z = Math.max(Math.min(player.motion.z, 0.3), -0.3);
 					}
 				}
 			});
-			jumpflyvalue = jumpfly.addoption("Speed", Number, 2);
-			jumpFlyGlide = jumpfly.addoption("GlideValue", Number, -0.27);
-			jumpFlyUpMotion = jumpfly.addoption("UpMotion", Number, 4);
-			jumpflyvert = jumpfly.addoption("Vertical", Number, 0.27);
+			infiniteFlyVert = infiniteFly.addoption("Vertical", Number, 0.3);
 
 			new Module("InvWalk", function() {});
 			new Module("KeepSprint", function() {});
@@ -965,7 +971,7 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 					tickLoop["Speed"] = function() {
 						lastjump++;
 						const oldMotion = new Vector3$1(player.motion.x, 0, player.motion.z);
-						const dir = getMoveDirection(speedvalue[1]);
+						const dir = getMoveDirection(Math.max(oldMotion.length(), speedvalue[1]));
 						lastjump = player.onGround ? 0 : lastjump;
 						player.motion.x = dir.x;
 						player.motion.z = dir.z;
@@ -1206,14 +1212,6 @@ h.addVelocity(-Math.sin(this.yaw) * g * .5, .1, -Math.cos(this.yaw) * g * .5);
 			});
 			scaffoldtower = scaffold.addoption("Tower", Boolean, true);
 			// scaffoldextend = scaffold.addoption("Extend", Number, 0);
-
-			function reloadTickLoop(value) {
-				if (game.tickLoop) {
-					MSPT = value;
-					clearInterval(game.tickLoop);
-					game.tickLoop = setInterval(() => game.fixedUpdate(), MSPT);
-				}
-			}
 
 			let timervalue;
 			const timer = new Module("Timer", function(callback) {
