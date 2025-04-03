@@ -1,10 +1,6 @@
 # vape-V3.0.6
 This Is 7GrandDad's/DataM0del's Script everything goes to them! :D
 
-THERE IS NOW A NEW VERSION 3.06!
+vector added old ac back -_- 
 
-look on codeberg.org 
-
-however, vector added old ac back -_- 
-
-scaffold - <2 cps and it works (dont sprint)
+still a couple of bugs.
